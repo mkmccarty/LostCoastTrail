@@ -10,6 +10,7 @@ import { PermitPlannerCard } from './components/PermitPlannerCard';
 import { TrailChecklistCard } from './components/TrailChecklistCard';
 import { BestDatesStrip } from './components/BestDatesStrip';
 import { AlmanacCard } from './components/AlmanacCard';
+import { DisclaimerModal } from './components/DisclaimerModal';
 import {
   Mountain,
   ChevronLeft,
@@ -116,6 +117,7 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <DisclaimerModal />
       {/* Header */}
       <header className="top-header">
         <div className="brand-title">
