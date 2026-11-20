@@ -260,21 +260,56 @@ export async function fetchAnnualHourlyTides(year: number): Promise<TideFetchRes
     }
 
     const byDate: Record<string, DayTideData> = {};
-    const allPoints: TidePoint[] = json.predictions.map((p) => {
+    const hourlyPoints = json.predictions.map((p) => {
       const { dateStr, minutes } = parseNoaaTimestamp(p.t);
       return {
-        timeStr: p.t,
         dateStr,
         minutes,
         heightFt: parseFloat(p.v),
-        slopeFtPerHr: 0,
       };
     });
+
+    // Upsample 1-hour NOAA points to 6-minute resolution via Catmull-Rom spline
+    // so annual calendar ratings match the main page's 6-minute tide evaluation.
+    const catmullRom = (p0: number, p1: number, p2: number, p3: number, t: number): number => {
+      const t2 = t * t;
+      const t3 = t2 * t;
+      return (
+        0.5 *
+        (2 * p1 +
+          (-p0 + p2) * t +
+          (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+          (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+      );
+    };
+
+    const allPoints: TidePoint[] = [];
+    for (let i = 0; i < hourlyPoints.length - 1; i++) {
+      const p0 = hourlyPoints[Math.max(0, i - 1)].heightFt;
+      const p1 = hourlyPoints[i].heightFt;
+      const p2 = hourlyPoints[i + 1].heightFt;
+      const p3 = hourlyPoints[Math.min(hourlyPoints.length - 1, i + 2)].heightFt;
+      const base = hourlyPoints[i];
+
+      for (let sub = 0; sub < 10; sub++) {
+        const t = sub / 10;
+        const mins = base.minutes + sub * 6;
+        if (mins >= 1440) continue;
+        const h = Math.round(catmullRom(p0, p1, p2, p3, t) * 1000) / 1000;
+        allPoints.push({
+          timeStr: `${base.dateStr} ${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`,
+          dateStr: base.dateStr,
+          minutes: mins,
+          heightFt: h,
+          slopeFtPerHr: 0,
+        });
+      }
+    }
 
     for (let i = 0; i < allPoints.length; i++) {
       const prev = allPoints[Math.max(0, i - 1)];
       const next = allPoints[Math.min(allPoints.length - 1, i + 1)];
-      const dtHr = i === 0 || i === allPoints.length - 1 ? 1.0 : 2.0;
+      const dtHr = i === 0 || i === allPoints.length - 1 ? 0.1 : 0.2;
       allPoints[i].slopeFtPerHr = (next.heightFt - prev.heightFt) / dtHr;
       if (!byDate[allPoints[i].dateStr]) {
         byDate[allPoints[i].dateStr] = { dateStr: allPoints[i].dateStr, points: [], extremes: [] };
