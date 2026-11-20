@@ -11,6 +11,7 @@ interface AnnualCalendarModalProps {
   onClose: () => void;
   selectedStartDateStr: string;
   tripDays: number;
+  onChangeTripDays: (days: number) => void;
   direction: Direction;
   onChangeDirection: (dir: Direction) => void;
   onSelectStartDate: (ymd: string) => void;
@@ -38,6 +39,7 @@ export const AnnualCalendarModal: React.FC<AnnualCalendarModalProps> = ({
   onClose,
   selectedStartDateStr,
   tripDays,
+  onChangeTripDays,
   direction,
   onChangeDirection,
   onSelectStartDate,
@@ -160,6 +162,19 @@ export const AnnualCalendarModal: React.FC<AnnualCalendarModalProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="segmented" title="Trip length (days)">
+              {[2, 3, 4, 5, 6].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className={tripDays === d ? 'active' : ''}
+                  onClick={() => onChangeTripDays(d)}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+
             <div className="segmented">
               <button
                 type="button"

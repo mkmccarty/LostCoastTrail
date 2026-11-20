@@ -148,6 +148,7 @@ export function App() {
         onClose={() => setCalendarOpen(false)}
         selectedStartDateStr={startDateStr}
         tripDays={tripDays}
+        onChangeTripDays={setTripDays}
         direction={direction}
         onChangeDirection={setDirection}
         onSelectStartDate={(ymd) => {
