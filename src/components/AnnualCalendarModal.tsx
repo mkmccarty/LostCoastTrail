@@ -4,7 +4,7 @@ import { parseYMD } from '../utils/permitUtils';
 import { fetchAnnualHourlyTides, TideFetchResult } from '../utils/tideService';
 import { CandidateStartSummary, scoreSingleStartDate } from '../utils/tripScorer';
 import { getMoonPhase } from '../utils/moonUtils';
-import { Calendar, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Loader2, X, ArrowUpDown } from 'lucide-react';
 
 interface AnnualCalendarModalProps {
   open: boolean;
@@ -12,6 +12,7 @@ interface AnnualCalendarModalProps {
   selectedStartDateStr: string;
   tripDays: number;
   direction: Direction;
+  onChangeDirection: (dir: Direction) => void;
   onSelectStartDate: (ymd: string) => void;
 }
 
@@ -38,6 +39,7 @@ export const AnnualCalendarModal: React.FC<AnnualCalendarModalProps> = ({
   selectedStartDateStr,
   tripDays,
   direction,
+  onChangeDirection,
   onSelectStartDate,
 }) => {
   const [year, setYear] = useState<number>(() => parseYMD(selectedStartDateStr).getFullYear());
@@ -157,7 +159,25 @@ export const AnnualCalendarModal: React.FC<AnnualCalendarModalProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="segmented">
+              <button
+                type="button"
+                className={direction === 'N_TO_S' ? 'active' : ''}
+                onClick={() => onChangeDirection('N_TO_S')}
+              >
+                N → S
+              </button>
+              <button
+                type="button"
+                className={direction === 'S_TO_N' ? 'active' : ''}
+                onClick={() => onChangeDirection('S_TO_N')}
+              >
+                <ArrowUpDown size={11} style={{ marginRight: 3, verticalAlign: 'middle' }} />
+                S → N
+              </button>
+            </div>
+
             <button
               type="button"
               className="btn btn-icon"

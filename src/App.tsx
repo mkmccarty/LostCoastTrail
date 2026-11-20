@@ -149,6 +149,7 @@ export function App() {
         selectedStartDateStr={startDateStr}
         tripDays={tripDays}
         direction={direction}
+        onChangeDirection={setDirection}
         onSelectStartDate={(ymd) => {
           setStartDateStr(ymd);
           setSelectedDayIdx(0);
