@@ -49,6 +49,7 @@ const NOAA_STATION_ID = '9418024';
 const NOAA_STATION_NAME = 'Shelter Cove, CA';
 
 const cache = new Map<string, TideFetchResult>();
+const annualCache = new Map<number, TideFetchResult>();
 
 function toNoaaDate(ymd: string): string {
   return ymd.replace(/-/g, '');
@@ -218,6 +219,76 @@ export async function fetchShelterCoveTides(
       byDate,
     };
     cache.set(key, result);
+    return result;
+  } catch (err) {
+    const fallback = generateOfflineEstimate(startDate, endDate);
+    fallback.error =
+      err instanceof Error
+        ? `NOAA API unavailable (${err.message}); showing offline estimate.`
+        : 'NOAA API unavailable; showing offline estimate.';
+    return fallback;
+  }
+}
+
+/**
+ * Fetches a full year (+6 days into Jan of next year) of hourly NOAA predictions
+ * for the annual calendar rating view.
+ */
+export async function fetchAnnualHourlyTides(year: number): Promise<TideFetchResult> {
+  const cached = annualCache.get(year);
+  if (cached) return cached;
+
+  const startDate = `${year}-01-01`;
+  const endDate = `${year + 1}-01-06`;
+  const begin = toNoaaDate(startDate);
+  const end = toNoaaDate(endDate);
+
+  const url =
+    'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter' +
+    `?begin_date=${begin}&end_date=${end}&station=${NOAA_STATION_ID}` +
+    '&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&format=json&interval=h';
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`NOAA HTTP ${res.status}`);
+    const json = (await res.json()) as {
+      predictions?: Array<{ t: string; v: string }>;
+      error?: { message: string };
+    };
+    if (json.error || !json.predictions?.length) {
+      throw new Error(json.error?.message || 'Empty annual NOAA response');
+    }
+
+    const byDate: Record<string, DayTideData> = {};
+    const allPoints: TidePoint[] = json.predictions.map((p) => {
+      const { dateStr, minutes } = parseNoaaTimestamp(p.t);
+      return {
+        timeStr: p.t,
+        dateStr,
+        minutes,
+        heightFt: parseFloat(p.v),
+        slopeFtPerHr: 0,
+      };
+    });
+
+    for (let i = 0; i < allPoints.length; i++) {
+      const prev = allPoints[Math.max(0, i - 1)];
+      const next = allPoints[Math.min(allPoints.length - 1, i + 1)];
+      const dtHr = i === 0 || i === allPoints.length - 1 ? 1.0 : 2.0;
+      allPoints[i].slopeFtPerHr = (next.heightFt - prev.heightFt) / dtHr;
+      if (!byDate[allPoints[i].dateStr]) {
+        byDate[allPoints[i].dateStr] = { dateStr: allPoints[i].dateStr, points: [], extremes: [] };
+      }
+      byDate[allPoints[i].dateStr].points.push(allPoints[i]);
+    }
+
+    const result: TideFetchResult = {
+      source: 'noaa',
+      stationId: NOAA_STATION_ID,
+      stationName: NOAA_STATION_NAME,
+      byDate,
+    };
+    annualCache.set(year, result);
     return result;
   } catch (err) {
     const fallback = generateOfflineEstimate(startDate, endDate);

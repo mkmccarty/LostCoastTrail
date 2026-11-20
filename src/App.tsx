@@ -11,6 +11,7 @@ import { TrailChecklistCard } from './components/TrailChecklistCard';
 import { BestDatesStrip } from './components/BestDatesStrip';
 import { AlmanacCard } from './components/AlmanacCard';
 import { DisclaimerModal } from './components/DisclaimerModal';
+import { AnnualCalendarModal } from './components/AnnualCalendarModal';
 import {
   Mountain,
   ChevronLeft,
@@ -18,6 +19,7 @@ import {
   ArrowUpDown,
   Loader2,
   AlertCircle,
+  Calendar,
 } from 'lucide-react';
 
 export function App() {
@@ -34,6 +36,7 @@ export function App() {
 
   const [tideResult, setTideResult] = useState<TideFetchResult | null>(null);
   const [loadingTides, setLoadingTides] = useState<boolean>(true);
+  const [calendarOpen, setCalendarOpen] = useState<boolean>(false);
 
   const windowBeginStr = useMemo(
     () => addDaysYMD(startDateStr, -3),
@@ -118,6 +121,17 @@ export function App() {
   return (
     <div className="app-shell">
       <DisclaimerModal />
+      <AnnualCalendarModal
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        selectedStartDateStr={startDateStr}
+        tripDays={tripDays}
+        direction={direction}
+        onSelectStartDate={(ymd) => {
+          setStartDateStr(ymd);
+          setSelectedDayIdx(0);
+        }}
+      />
       {/* Header */}
       <header className="top-header">
         <div className="brand-title">
@@ -191,6 +205,15 @@ export function App() {
             title="Jump to 90 days from today (when permits open at 7 AM PT)"
           >
             +90d (Permit Edge)
+          </button>
+          <button
+            type="button"
+            className="btn btn-active"
+            style={{ fontSize: '0.76rem', padding: '5px 9px' }}
+            onClick={() => setCalendarOpen(true)}
+            title="View full-year daily star ratings & moon phases"
+          >
+            <Calendar size={13} /> Annual Calendar
           </button>
         </div>
 

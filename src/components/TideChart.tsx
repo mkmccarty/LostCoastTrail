@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { DayTideData } from '../utils/tideService';
 import { formatDisplayDate } from '../utils/permitUtils';
 import { formatMinutesAsTime, getDaylightForDate } from '../utils/solarUtils';
+import { getMoonPhase } from '../utils/moonUtils';
 import { Waves, Sun, Moon } from 'lucide-react';
 
 interface TideChartProps {
@@ -30,6 +31,7 @@ export const TideChart: React.FC<TideChartProps> = ({
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const daylight = getDaylightForDate(dateStr);
+  const moon = getMoonPhase(dateStr);
 
   const points = dayData?.points ?? [];
   const extremes = dayData?.extremes ?? [];
@@ -79,6 +81,17 @@ export const TideChart: React.FC<TideChartProps> = ({
             <span>NOAA Station 9418024 (Shelter Cove, CA · MLLW)</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <Sun size={12} color="#f59e0b" /> Daylight: {daylight.sunriseLabel} – {daylight.sunsetLabel}
+            </span>
+            <span
+              title={`${moon.illuminationPct}% illuminated · ${moon.tideNote} tidal range`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <span>{moon.emoji}</span> {moon.name}
+              {moon.tideNote !== 'Moderate' && (
+                <span style={{ color: moon.tideNote === 'Spring Tide' ? '#2dd4bf' : '#94a3b8' }}>
+                  ({moon.tideNote})
+                </span>
+              )}
             </span>
           </div>
         </div>
