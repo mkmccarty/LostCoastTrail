@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Direction, getItinerary } from './data/trailData';
+import {
+  Direction,
+  getItinerary,
+  ItineraryDayTemplate,
+  splitItineraryForZone,
+} from './data/trailData';
 import { addDaysYMD, formatYMD } from './utils/permitUtils';
 import { fetchShelterCoveTides, TideFetchResult } from './utils/tideService';
 import { evaluateCandidateDates } from './utils/tripScorer';
@@ -37,22 +42,35 @@ export function App() {
   const [tideResult, setTideResult] = useState<TideFetchResult | null>(null);
   const [loadingTides, setLoadingTides] = useState<boolean>(true);
   const [calendarOpen, setCalendarOpen] = useState<boolean>(false);
+  const [customItinerary, setCustomItinerary] = useState<ItineraryDayTemplate[] | null>(null);
+
+  // Reset custom split when tripDays or direction changes
+  useEffect(() => {
+    setCustomItinerary(null);
+  }, [tripDays, direction]);
+
+  const itinerary = useMemo(
+    () => customItinerary ?? getItinerary(tripDays, direction),
+    [customItinerary, tripDays, direction]
+  );
+
+  const effectiveDays = itinerary.length;
 
   const windowBeginStr = useMemo(
     () => addDaysYMD(startDateStr, -3),
     [startDateStr]
   );
   const windowEndStr = useMemo(
-    () => addDaysYMD(startDateStr, 3 + tripDays - 1),
-    [startDateStr, tripDays]
+    () => addDaysYMD(startDateStr, 3 + effectiveDays - 1),
+    [startDateStr, effectiveDays]
   );
 
-  // Clamp selectedDayIdx when tripDays shrinks
+  // Clamp selectedDayIdx when itinerary shrinks
   useEffect(() => {
-    if (selectedDayIdx >= tripDays) {
-      setSelectedDayIdx(tripDays - 1);
+    if (selectedDayIdx >= effectiveDays) {
+      setSelectedDayIdx(effectiveDays - 1);
     }
-  }, [tripDays, selectedDayIdx]);
+  }, [effectiveDays, selectedDayIdx]);
 
   // Fetch NOAA Shelter Cove tides for the 7-day candidate window + trip duration
   useEffect(() => {
@@ -80,10 +98,14 @@ export function App() {
     [startDateStr, tripDays, direction, tideResult]
   );
 
-  const itinerary = useMemo(
-    () => getItinerary(tripDays, direction),
-    [tripDays, direction]
-  );
+  const handleSplitDayForZone = (
+    dayIdx: number,
+    zoneId: 'zone-1' | 'zone-2' | 'zone-3'
+  ) => {
+    const next = splitItineraryForZone(itinerary, dayIdx, zoneId, direction);
+    setCustomItinerary(next);
+    setSelectedDayIdx(Math.min(dayIdx + 1, next.length - 1));
+  };
 
   const activeDay = itinerary[selectedDayIdx] ?? itinerary[0];
   const activeDateStr = addDaysYMD(startDateStr, selectedDayIdx);
@@ -302,6 +324,9 @@ export function App() {
             itinerary={itinerary}
             selectedDayIdx={selectedDayIdx}
             onSelectDay={handleSelectDay}
+            onSplitDayForZone={handleSplitDayForZone}
+            isCustomized={customItinerary !== null}
+            onResetItinerary={() => setCustomItinerary(null)}
             tidesByDate={tideResult?.byDate ?? {}}
           />
 

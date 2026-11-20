@@ -432,3 +432,72 @@ export function getDirectionalMile(mileNtoS: number, direction: Direction): numb
     ? Math.round(mileNtoS * 10) / 10
     : Math.round((TOTAL_TRAIL_MILES - mileNtoS) * 10) / 10;
 }
+
+const STAGING_CAMP_BEFORE_ZONE: Record<
+  Direction,
+  Record<'zone-1' | 'zone-2' | 'zone-3', string>
+> = {
+  N_TO_S: {
+    'zone-1': 'mattole',
+    'zone-2': 'sea-lion-gulch',
+    'zone-3': 'miller-flat',
+  },
+  S_TO_N: {
+    'zone-3': 'gitchell-creek',
+    'zone-2': 'randall-creek',
+    'zone-1': 'sea-lion-gulch',
+  },
+};
+
+/**
+ * Splits `dayIdx` at the staging camp immediately before `zoneId`,
+ * moving `zoneId` (and any subsequent zones on that leg) to the next day.
+ */
+export function splitItineraryForZone(
+  itinerary: ItineraryDayTemplate[],
+  dayIdx: number,
+  zoneId: 'zone-1' | 'zone-2' | 'zone-3',
+  direction: Direction
+): ItineraryDayTemplate[] {
+  const targetDay = itinerary[dayIdx];
+  if (!targetDay) return itinerary;
+
+  const zonePos = targetDay.zonesCrossed.indexOf(zoneId);
+  if (zonePos === -1) return itinerary;
+
+  const gateCampId = STAGING_CAMP_BEFORE_ZONE[direction][zoneId];
+  const gateCampName = WAYPOINT_BY_ID[gateCampId]?.name ?? gateCampId;
+  const zoneName = ZONE_BY_ID[zoneId].shortName;
+
+  const zonesToday = targetDay.zonesCrossed.slice(0, zonePos);
+  const zonesTomorrow = targetDay.zonesCrossed.slice(zonePos);
+
+  const isLayover = targetDay.fromId === gateCampId;
+
+  const firstHalf: ItineraryDayTemplate = {
+    dayNumber: targetDay.dayNumber,
+    fromId: targetDay.fromId,
+    toId: gateCampId,
+    zonesCrossed: zonesToday,
+    campNote: isLayover
+      ? `Hold / rest day at ${gateCampName} waiting for tomorrow's ${zoneName} low-tide window.`
+      : `Split day: hike to ${gateCampName} and camp before ${zoneName} to catch tomorrow's tide.`,
+  };
+
+  const secondHalf: ItineraryDayTemplate = {
+    dayNumber: targetDay.dayNumber + 1,
+    fromId: gateCampId,
+    toId: targetDay.toId,
+    zonesCrossed: zonesTomorrow,
+    campNote: `Cross ${zoneName} from ${gateCampName} on today's low-tide window, continue to ${WAYPOINT_BY_ID[targetDay.toId]?.name.replace(' (Shelter Cove)', '') ?? targetDay.toId}.`,
+  };
+
+  const updated = [
+    ...itinerary.slice(0, dayIdx),
+    firstHalf,
+    secondHalf,
+    ...itinerary.slice(dayIdx + 1),
+  ];
+
+  return updated.map((d, i) => ({ ...d, dayNumber: i + 1 }));
+}

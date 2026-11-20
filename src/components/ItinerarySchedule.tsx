@@ -17,6 +17,8 @@ import {
   Footprints,
   ArrowRight,
   Flame,
+  Split,
+  RotateCcw,
 } from 'lucide-react';
 
 interface ItineraryScheduleProps {
@@ -25,6 +27,9 @@ interface ItineraryScheduleProps {
   itinerary: ItineraryDayTemplate[];
   selectedDayIdx: number;
   onSelectDay: (idx: number, jumpMinutes?: number) => void;
+  onSplitDayForZone: (dayIdx: number, zoneId: 'zone-1' | 'zone-2' | 'zone-3') => void;
+  isCustomized: boolean;
+  onResetItinerary: () => void;
   tidesByDate: Record<string, DayTideData>;
 }
 
@@ -34,6 +39,9 @@ export const ItinerarySchedule: React.FC<ItineraryScheduleProps> = ({
   itinerary,
   selectedDayIdx,
   onSelectDay,
+  onSplitDayForZone,
+  isCustomized,
+  onResetItinerary,
   tidesByDate,
 }) => {
   // Overall trip passability summary
@@ -79,25 +87,38 @@ export const ItinerarySchedule: React.FC<ItineraryScheduleProps> = ({
             · Pace assumed: 1.0 mph in tide zones
           </div>
         </div>
-        <span
-          className={`badge ${
-            hasImpassable ? 'badge-danger' : hasTight ? 'badge-tight' : 'badge-safe'
-          }`}
-        >
-          {hasImpassable ? (
-            <>
-              <AlertTriangle size={12} /> Impassable Zone(s) — Adjust Dates
-            </>
-          ) : hasTight ? (
-            <>
-              <Clock size={12} /> Tight Tide Margins
-            </>
-          ) : (
-            <>
-              <CheckCircle2 size={12} /> All 3 Zones Passable
-            </>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {isCustomized && (
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: '0.75rem', padding: '4px 9px' }}
+              onClick={onResetItinerary}
+              title="Restore default itinerary for this trip length"
+            >
+              <RotateCcw size={12} /> Reset Split
+            </button>
           )}
-        </span>
+          <span
+            className={`badge ${
+              hasImpassable ? 'badge-danger' : hasTight ? 'badge-tight' : 'badge-safe'
+            }`}
+          >
+            {hasImpassable ? (
+              <>
+                <AlertTriangle size={12} /> Impassable Zone(s) — Split Day or Adjust Dates
+              </>
+            ) : hasTight ? (
+              <>
+                <Clock size={12} /> Tight Tide Margins
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={12} /> All 3 Zones Passable
+              </>
+            )}
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -244,9 +265,26 @@ export const ItinerarySchedule: React.FC<ItineraryScheduleProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <div className="mono" style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
-                            No safe daylight window
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <div className="mono" style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
+                              No safe daylight window
+                            </div>
                           </div>
+                        )}
+
+                        {itinerary.length < 8 && (
+                          <button
+                            type="button"
+                            className={`btn ${evaluation.status !== 'SAFE' ? 'btn-active' : ''}`}
+                            style={{ fontSize: '0.73rem', padding: '4px 9px' }}
+                            title="Camp at the staging site before this zone and cross it the following day"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSplitDayForZone(idx, zone.id);
+                            }}
+                          >
+                            <Split size={12} /> Split Day &amp; Cross Tomorrow
+                          </button>
                         )}
                       </div>
                     );
