@@ -8,6 +8,7 @@ import {
 import { addDaysYMD, formatYMD } from './utils/permitUtils';
 import { fetchShelterCoveTides, TideFetchResult } from './utils/tideService';
 import { evaluateCandidateDates } from './utils/tripScorer';
+import { loadSavedSettings, saveSettingsCookie } from './utils/settingsCookie';
 import { CoastalMap } from './components/CoastalMap';
 import { TideChart } from './components/TideChart';
 import { ItinerarySchedule } from './components/ItinerarySchedule';
@@ -28,16 +29,28 @@ import {
 } from 'lucide-react';
 
 export function App() {
-  // Default to 90 days from today (prime permit-planning target)
+  const initialSettings = useMemo(() => loadSavedSettings(), []);
+
+  // Restore saved settings from cookie (snapping past dates to today), or default to +90d
   const [startDateStr, setStartDateStr] = useState<string>(() => {
+    if (initialSettings) return initialSettings.startDateStr;
     const d = new Date();
     d.setDate(d.getDate() + 90);
     return formatYMD(d);
   });
-  const [tripDays, setTripDays] = useState<number>(3);
-  const [direction, setDirection] = useState<Direction>('N_TO_S');
+  const [tripDays, setTripDays] = useState<number>(
+    () => initialSettings?.tripDays ?? 3
+  );
+  const [direction, setDirection] = useState<Direction>(
+    () => initialSettings?.direction ?? 'N_TO_S'
+  );
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
   const [selectedMinutes, setSelectedMinutes] = useState<number>(9 * 60); // 9:00 AM
+
+  // Persist user settings to cookie whenever they change
+  useEffect(() => {
+    saveSettingsCookie({ startDateStr, tripDays, direction });
+  }, [startDateStr, tripDays, direction]);
 
   const [tideResult, setTideResult] = useState<TideFetchResult | null>(null);
   const [loadingTides, setLoadingTides] = useState<boolean>(true);
